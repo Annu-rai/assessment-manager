@@ -6,3 +6,6 @@ dist
 .DS_Store
 mongodb-binaries
 .cache
+
+# Personal interview prep notes
+NOTES.md
