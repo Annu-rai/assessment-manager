@@ -1,0 +1,27 @@
+# Render Blueprint for the backend API.
+# In the Render dashboard: New + → Blueprint → connect this repo.
+# Render reads this file and creates the web service automatically.
+services:
+  - type: web
+    name: assessment-api
+    runtime: node
+    rootDir: server
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      # Auto-generated strong secret for signing JWTs.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: NODE_ENV
+        value: production
+      # Set these in the dashboard after creating the service:
+      #   MONGO_URI     → your MongoDB Atlas connection string
+      #   CLIENT_ORIGIN → your deployed Vercel frontend URL
+      - key: MONGO_URI
+        sync: false
+      - key: CLIENT_ORIGIN
+        sync: false
