@@ -1,16 +1,23 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
+import { ROLE_LABELS, isAdmin, isCandidate } from '../constants/roles.js';
 
-const LINKS = [
+// Links shown to staff (recruiter/interviewer/trainer/admin). Admin-only and
+// candidate links are added conditionally below.
+const STAFF_LINKS = [
+  { to: '/dashboard', label: 'Dashboard' },
   { to: '/builder', label: 'Builder' },
+  { to: '/bank', label: 'Question Bank' },
   { to: '/assessments', label: 'Assessments' },
   { to: '/launch-pad', label: 'Launch Pad' },
   { to: '/reports', label: 'Reports' },
 ];
 
+const CANDIDATE_LINKS = [{ to: '/candidate', label: 'My Assessments' }];
+
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, organization, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -19,11 +26,16 @@ export default function Navbar() {
     navigate('/login');
   };
 
+  let links = isCandidate(user) ? CANDIDATE_LINKS : [...STAFF_LINKS];
+  if (isAdmin(user)) links = [...links, { to: '/team', label: 'Team' }];
+
   return (
     <header className="navbar">
-      <div className="navbar-brand">📋 Assessment Manager</div>
+      <div className="navbar-brand">
+        📋 {organization?.name || 'Assessment Manager'}
+      </div>
       <nav className="navbar-links">
-        {LINKS.map((l) => (
+        {links.map((l) => (
           <NavLink
             key={l.to}
             to={l.to}
@@ -42,7 +54,10 @@ export default function Navbar() {
         >
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <span className="navbar-username">{user?.name}</span>
+        <span className="navbar-username">
+          {user?.name}
+          {user?.role && <span className="role-badge">{ROLE_LABELS[user.role] || user.role}</span>}
+        </span>
         <button className="btn btn-ghost" onClick={handleLogout}>
           Logout
         </button>

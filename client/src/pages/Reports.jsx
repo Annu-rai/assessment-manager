@@ -1,12 +1,26 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import api from '../api/client.js';
+
+const fileUrl = (path) => `${import.meta.env.VITE_API_URL || ''}${path}`;
 
 // Render an answer value nicely regardless of its type.
 function formatAnswer(answer) {
+  if (answer === null || answer === undefined || answer === '') return '—';
   if (Array.isArray(answer)) return answer.join(', ');
   if (answer === true) return 'Yes';
   if (answer === false) return 'No';
-  if (answer === null || answer === undefined || answer === '') return '—';
+  // Match answers arrive as { left: chosenRight }.
+  if (typeof answer === 'object') {
+    return Object.entries(answer).map(([k, v]) => `${k} → ${v}`).join('; ');
+  }
+  // Uploaded files are stored as "/uploads/..." paths.
+  if (typeof answer === 'string' && answer.startsWith('/uploads/')) {
+    return (
+      <a href={fileUrl(answer)} target="_blank" rel="noreferrer">
+        View file
+      </a>
+    );
+  }
   return String(answer);
 }
 
@@ -15,6 +29,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [openId, setOpenId] = useState(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [gradingId, setGradingId] = useState(null);
 
   useEffect(() => {
     api
@@ -22,7 +38,24 @@ export default function Reports() {
       .then((res) => setResponses(res.data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    api.get('/ai/status').then((r) => setAiEnabled(r.data.enabled)).catch(() => setAiEnabled(false));
   }, []);
+
+  const hasEssay = (r) => r.answers.some((a) => a.type === 'essay');
+
+  // Trigger AI grading for a submission, then swap in the updated response.
+  const gradeWithAI = async (id) => {
+    setError('');
+    setGradingId(id);
+    try {
+      const { data } = await api.post(`/ai/evaluate-response/${id}`);
+      setResponses((list) => list.map((r) => (r._id === id ? { ...r, ...data } : r)));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGradingId(null);
+    }
+  };
 
   // Group a response's answers by category -> factor for structured display.
   const grouped = (answers) => {
@@ -63,14 +96,38 @@ export default function Reports() {
               <div>
                 <h3>{r.assessment?.title || 'Untitled assessment'}</h3>
                 <span className="muted small">
+                  {r.respondent?.name ? `${r.respondent.name} · ` : ''}
                   {new Date(r.createdAt).toLocaleString()} · {r.answers.length} answers
                 </span>
               </div>
-              <span className="accordion-toggle">{open ? '▾' : '▸'}</span>
+              <div className="report-head-right">
+                {r.graded && (
+                  <span className={`status-badge ${r.passed ? 'status-published' : 'status-archived'}`}>
+                    {r.percentage}% {r.passed ? 'Pass' : 'Fail'}
+                  </span>
+                )}
+                <span className="accordion-toggle">{open ? '▾' : '▸'}</span>
+              </div>
             </button>
 
             {open && (
               <div className="report-body">
+                {aiEnabled && hasEssay(r) && (
+                  <div className="report-toolbar">
+                    <button
+                      className="btn btn-ai btn-sm"
+                      onClick={() => gradeWithAI(r._id)}
+                      disabled={gradingId === r._id}
+                    >
+                      {gradingId === r._id ? 'Grading…' : '✨ Grade essays with AI'}
+                    </button>
+                    {r.aiEvaluatedAt && (
+                      <span className="muted small">
+                        AI graded {new Date(r.aiEvaluatedAt).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {Object.entries(grouped(r.answers)).map(([cat, factors]) => (
                   <div className="report-category" key={cat}>
                     <h4>{cat}</h4>
@@ -80,10 +137,28 @@ export default function Reports() {
                         <table className="report-table">
                           <tbody>
                             {items.map((a, i) => (
-                              <tr key={i}>
-                                <td className="report-q">{a.questionText}</td>
-                                <td className="report-a">{formatAnswer(a.answer)}</td>
-                              </tr>
+                              <Fragment key={i}>
+                                <tr>
+                                  <td className="report-q">{a.questionText}</td>
+                                  <td className="report-a">{formatAnswer(a.answer)}</td>
+                                  <td className="report-grade">
+                                    {a.aiGraded ? (
+                                      <span className="ai-score">{a.aiScore}/{a.pointsPossible}</span>
+                                    ) : a.isCorrect === true ? (
+                                      <span className="mark-correct">✓</span>
+                                    ) : a.isCorrect === false ? (
+                                      <span className="mark-wrong">✗</span>
+                                    ) : (
+                                      <span className="muted">—</span>
+                                    )}
+                                  </td>
+                                </tr>
+                                {a.aiGraded && a.aiFeedback && (
+                                  <tr>
+                                    <td colSpan={3} className="ai-feedback">💬 {a.aiFeedback}</td>
+                                  </tr>
+                                )}
+                              </Fragment>
                             ))}
                           </tbody>
                         </table>

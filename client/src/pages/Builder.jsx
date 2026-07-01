@@ -1,36 +1,69 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client.js';
 import { uid } from '../api/uid.js';
 import QuestionSettingsModal, { QUESTION_TYPE_META } from '../components/QuestionSettingsModal.jsx';
 import LoadCategoriesModal from '../components/LoadCategoriesModal.jsx';
+import LoadBankModal from '../components/LoadBankModal.jsx';
+import AIGenerateModal from '../components/AIGenerateModal.jsx';
 import QuestionEditor from '../components/QuestionEditor.jsx';
+
+// Map a Question Bank record into the Builder's local question shape.
+function bankToLocal(q) {
+  return {
+    _localId: uid('q'),
+    text: q.text,
+    type: q.type,
+    options: q.options || [],
+    ratingScale: q.ratingScale || 5,
+    correctAnswer: q.correctAnswer ?? null,
+    points: q.points ?? 1,
+    tolerance: q.tolerance ?? 0,
+    pairs: q.pairs || [],
+    accept: q.accept || '',
+  };
+}
 
 // Build blank question slots from the type/count map chosen in the settings popup.
 function buildQuestions(counts) {
   const questions = [];
   for (const [type, count] of Object.entries(counts)) {
+    const meta = QUESTION_TYPE_META[type] || {};
     for (let i = 0; i < count; i += 1) {
       questions.push({
         _localId: uid('q'),
         text: '',
         type,
-        options: QUESTION_TYPE_META[type]?.hasOptions ? ['', ''] : [],
+        options: meta.hasOptions ? ['', ''] : [],
         ratingScale: 5,
+        correctAnswer: null,
+        points: 1,
+        tolerance: 0,
+        pairs: type === 'match' ? [{ left: '', right: '' }] : [],
+        accept: meta.accept || '',
       });
     }
   }
   return questions;
 }
 
-const emptyState = { title: '', description: '', categories: [] };
+const emptyState = { title: '', description: '', passingScore: 60, timeLimitMinutes: 0, categories: [] };
 
 export default function Builder() {
   const navigate = useNavigate();
   const [draft, setDraft] = useState(emptyState);
   const [expanded, setExpanded] = useState(new Set());
   const [settingsFor, setSettingsFor] = useState(null); // { catId, factorId, factorName }
+  const [bankFor, setBankFor] = useState(null); // { catId, factorId, factorName }
+  const [aiFor, setAiFor] = useState(null); // { catId, factorId, factorName }
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [drag, setDrag] = useState(null); // { type, catId, factorId, index }
   const [showLoad, setShowLoad] = useState(false);
+
+  // Only show the "Generate with AI" button if the server has a Claude key.
+  useEffect(() => {
+    api.get('/ai/status').then((res) => setAiEnabled(res.data.enabled)).catch(() => setAiEnabled(false));
+  }, []);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -54,6 +87,33 @@ export default function Builder() {
       ...cat,
       factors: cat.factors.map((f) => (f._localId === factorId ? fn(f) : f)),
     }));
+
+  // ---- drag & drop reordering (Module 9) ----
+  // `drag` describes what's being dragged: { type, catId, factorId, index }.
+  const move = (arr, from, to) => {
+    if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr;
+    const next = [...arr];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item);
+    return next;
+  };
+
+  // Drop handlers only reorder when the dragged item shares the target's list.
+  const dropOnCategory = (toIndex) => {
+    if (drag?.type !== 'category') return;
+    setCategories(move(draft.categories, drag.index, toIndex));
+    setDrag(null);
+  };
+  const dropOnFactor = (catId, toIndex) => {
+    if (drag?.type !== 'factor' || drag.catId !== catId) return;
+    updateCategory(catId, (cat) => ({ ...cat, factors: move(cat.factors, drag.index, toIndex) }));
+    setDrag(null);
+  };
+  const dropOnQuestion = (catId, factorId, toIndex) => {
+    if (drag?.type !== 'question' || drag.catId !== catId || drag.factorId !== factorId) return;
+    updateFactor(catId, factorId, (f) => ({ ...f, questions: move(f.questions, drag.index, toIndex) }));
+    setDrag(null);
+  };
 
   // ---- category ops ----
   const addCategory = () => {
@@ -89,6 +149,22 @@ export default function Builder() {
     setSettingsFor(null);
   };
 
+  // Append questions pulled from the Question Bank into the target factor.
+  const applyBankQuestions = (bankQs) => {
+    const { catId, factorId } = bankFor;
+    const mapped = bankQs.map(bankToLocal);
+    updateFactor(catId, factorId, (f) => ({ ...f, questions: [...f.questions, ...mapped] }));
+    setBankFor(null);
+  };
+
+  // Append AI-generated questions (same shape as bank records) into the factor.
+  const applyAiQuestions = (aiQs) => {
+    const { catId, factorId } = aiFor;
+    const mapped = aiQs.map(bankToLocal);
+    updateFactor(catId, factorId, (f) => ({ ...f, questions: [...f.questions, ...mapped] }));
+    setAiFor(null);
+  };
+
   const updateQuestion = (catId, factorId, question) =>
     updateFactor(catId, factorId, (f) => ({
       ...f,
@@ -115,6 +191,11 @@ export default function Builder() {
           type: q.type,
           options: q.options || [],
           ratingScale: q.ratingScale || 5,
+          correctAnswer: q.correctAnswer ?? null,
+          points: q.points ?? 1,
+          tolerance: q.tolerance ?? 0,
+          pairs: q.pairs || [],
+          accept: q.accept || '',
         })),
       })),
     }));
@@ -142,6 +223,8 @@ export default function Builder() {
   const serialize = () => ({
     title: draft.title.trim(),
     description: draft.description.trim(),
+    passingScore: Number(draft.passingScore) || 0,
+    timeLimitMinutes: Number(draft.timeLimitMinutes) || 0,
     categories: draft.categories.map((c) => ({
       name: c.name.trim(),
       factors: c.factors.map((f) => ({
@@ -151,6 +234,11 @@ export default function Builder() {
           type: q.type,
           options: (q.options || []).filter((o) => o.trim() !== ''),
           ratingScale: q.ratingScale,
+          correctAnswer: q.correctAnswer ?? null,
+          points: Number(q.points) || 1,
+          tolerance: Number(q.tolerance) || 0,
+          pairs: (q.pairs || []).filter((p) => p.left.trim() !== '' && p.right.trim() !== ''),
+          accept: q.accept || '',
         })),
       })),
     })),
@@ -217,6 +305,25 @@ export default function Builder() {
             placeholder="Short description"
           />
         </label>
+        <label>
+          Passing score (%)
+          <input
+            type="number"
+            min="0"
+            max="100"
+            value={draft.passingScore}
+            onChange={(e) => setDraft({ ...draft, passingScore: e.target.value })}
+          />
+        </label>
+        <label>
+          Time limit (minutes, 0 = none)
+          <input
+            type="number"
+            min="0"
+            value={draft.timeLimitMinutes}
+            onChange={(e) => setDraft({ ...draft, timeLimitMinutes: e.target.value })}
+          />
+        </label>
         <div className="builder-stats">
           {draft.categories.length} categories · {totalQuestions} questions
         </div>
@@ -232,9 +339,22 @@ export default function Builder() {
       )}
 
       {/* Category accordion */}
-      {draft.categories.map((cat) => (
-        <div className="accordion accordion-category" key={cat._localId}>
+      {draft.categories.map((cat, catIndex) => (
+        <div
+          className="accordion accordion-category"
+          key={cat._localId}
+          onDragOver={(e) => drag?.type === 'category' && e.preventDefault()}
+          onDrop={() => dropOnCategory(catIndex)}
+        >
           <div className="accordion-head">
+            <span
+              className="drag-handle"
+              draggable
+              onDragStart={() => setDrag({ type: 'category', index: catIndex })}
+              title="Drag to reorder category"
+            >
+              ⠿
+            </span>
             <button className="accordion-toggle" onClick={() => toggle(cat._localId)}>
               {isOpen(cat._localId) ? '▾' : '▸'}
             </button>
@@ -254,9 +374,26 @@ export default function Builder() {
               {cat.factors.length === 0 && <p className="muted small">No factors yet.</p>}
 
               {/* Factor accordion */}
-              {cat.factors.map((factor) => (
-                <div className="accordion accordion-factor" key={factor._localId}>
+              {cat.factors.map((factor, factorIndex) => (
+                <div
+                  className="accordion accordion-factor"
+                  key={factor._localId}
+                  onDragOver={(e) =>
+                    drag?.type === 'factor' && drag.catId === cat._localId && e.preventDefault()
+                  }
+                  onDrop={() => dropOnFactor(cat._localId, factorIndex)}
+                >
                   <div className="accordion-head">
+                    <span
+                      className="drag-handle"
+                      draggable
+                      onDragStart={() =>
+                        setDrag({ type: 'factor', catId: cat._localId, index: factorIndex })
+                      }
+                      title="Drag to reorder factor"
+                    >
+                      ⠿
+                    </span>
                     <button className="accordion-toggle" onClick={() => toggle(factor._localId)}>
                       {isOpen(factor._localId) ? '▾' : '▸'}
                     </button>
@@ -283,26 +420,72 @@ export default function Builder() {
                   {isOpen(factor._localId) && (
                     <div className="accordion-body">
                       {factor.questions.map((q, idx) => (
-                        <QuestionEditor
+                        <div
                           key={q._localId}
-                          question={q}
-                          index={idx}
-                          onChange={(updated) => updateQuestion(cat._localId, factor._localId, updated)}
-                          onRemove={() => removeQuestion(cat._localId, factor._localId, q._localId)}
-                        />
+                          onDragOver={(e) =>
+                            drag?.type === 'question' &&
+                            drag.catId === cat._localId &&
+                            drag.factorId === factor._localId &&
+                            e.preventDefault()
+                          }
+                          onDrop={() => dropOnQuestion(cat._localId, factor._localId, idx)}
+                        >
+                          <QuestionEditor
+                            question={q}
+                            index={idx}
+                            onChange={(updated) => updateQuestion(cat._localId, factor._localId, updated)}
+                            onRemove={() => removeQuestion(cat._localId, factor._localId, q._localId)}
+                            onDragStart={() =>
+                              setDrag({
+                                type: 'question',
+                                catId: cat._localId,
+                                factorId: factor._localId,
+                                index: idx,
+                              })
+                            }
+                          />
+                        </div>
                       ))}
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() =>
-                          setSettingsFor({
-                            catId: cat._localId,
-                            factorId: factor._localId,
-                            factorName: factor.name,
-                          })
-                        }
-                      >
-                        ⚙ Add Questions
-                      </button>
+                      <div className="factor-actions">
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() =>
+                            setSettingsFor({
+                              catId: cat._localId,
+                              factorId: factor._localId,
+                              factorName: factor.name,
+                            })
+                          }
+                        >
+                          ⚙ Add Questions
+                        </button>
+                        <button
+                          className="btn btn-ghost btn-sm"
+                          onClick={() =>
+                            setBankFor({
+                              catId: cat._localId,
+                              factorId: factor._localId,
+                              factorName: factor.name,
+                            })
+                          }
+                        >
+                          🏦 Add from Bank
+                        </button>
+                        {aiEnabled && (
+                          <button
+                            className="btn btn-ai btn-sm"
+                            onClick={() =>
+                              setAiFor({
+                                catId: cat._localId,
+                                factorId: factor._localId,
+                                factorName: factor.name,
+                              })
+                            }
+                          >
+                            ✨ Generate with AI
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -332,6 +515,22 @@ export default function Builder() {
 
       {showLoad && (
         <LoadCategoriesModal onSelect={appendLoadedCategories} onClose={() => setShowLoad(false)} />
+      )}
+
+      {bankFor && (
+        <LoadBankModal
+          factorName={bankFor.factorName}
+          onAdd={applyBankQuestions}
+          onClose={() => setBankFor(null)}
+        />
+      )}
+
+      {aiFor && (
+        <AIGenerateModal
+          factorName={aiFor.factorName}
+          onAdd={applyAiQuestions}
+          onClose={() => setAiFor(null)}
+        />
       )}
     </div>
   );

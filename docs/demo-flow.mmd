@@ -1,0 +1,28 @@
+sequenceDiagram
+    participant Staff as Recruiter
+    participant API as Express API
+    participant Score as scoring.js
+    participant Guest as Anonymous User
+    participant DB as MongoDB
+
+    Note over Staff,DB: 1. Assessment banao + public link
+    Staff->>API: Build assessment (drag-drop, bank, correct answers)
+    Staff->>API: POST /assessments/:id/public-link
+    API->>DB: generate publicId, isPublic=true
+    API-->>Staff: link /t/aBc123
+
+    Note over Guest,DB: 2. Anonymous test (no login)
+    Guest->>API: GET /public/assessments/aBc123
+    API->>API: stripAnswerKey()
+    API-->>Guest: Test (answers hidden)
+    Note over Guest: Timer chalta ⏱️ auto-submit
+    Guest->>API: POST submit {name, answers}
+    API->>DB: find-or-create guest user
+    API->>Score: scoreResponse()
+    Score-->>API: score, percentage, passed
+    API->>DB: save Response
+    API-->>Guest: Result (pass/fail)
+
+    Note over Staff,DB: 3. Staff Reports mein dikhta hai
+    Staff->>API: GET /responses
+    API-->>Staff: Guest ka result (score, ✓/✗)

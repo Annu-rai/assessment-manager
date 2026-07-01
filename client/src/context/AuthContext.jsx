@@ -5,6 +5,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [organization, setOrganization] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // On first load, if we have a token, validate it by fetching the profile.
@@ -16,7 +17,10 @@ export function AuthProvider({ children }) {
     }
     api
       .get('/auth/me')
-      .then((res) => setUser(res.data.user))
+      .then((res) => {
+        setUser(res.data.user);
+        setOrganization(res.data.organization || null);
+      })
       .catch(() => localStorage.removeItem('token'))
       .finally(() => setLoading(false));
   }, []);
@@ -24,6 +28,7 @@ export function AuthProvider({ children }) {
   const persist = (data) => {
     localStorage.setItem('token', data.token);
     setUser(data.user);
+    if (data.organization) setOrganization(data.organization);
   };
 
   const login = useCallback(async (email, password) => {
@@ -31,18 +36,24 @@ export function AuthProvider({ children }) {
     persist(data);
   }, []);
 
-  const register = useCallback(async (name, email, password) => {
-    const { data } = await api.post('/auth/register', { name, email, password });
+  const register = useCallback(async (name, email, password, organizationName) => {
+    const { data } = await api.post('/auth/register', {
+      name,
+      email,
+      password,
+      organizationName,
+    });
     persist(data);
   }, []);
 
   const logout = useCallback(() => {
     localStorage.removeItem('token');
     setUser(null);
+    setOrganization(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, organization, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

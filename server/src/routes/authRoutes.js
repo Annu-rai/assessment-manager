@@ -11,6 +11,7 @@ router.post(
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('A valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('organizationName').optional().trim(),
   validate,
   register
 );

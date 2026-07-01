@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 export default function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const [form, setForm] = useState({ organizationName: '', name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -20,8 +20,8 @@ export default function Register() {
     }
     setBusy(true);
     try {
-      await register(form.name, form.email, form.password);
-      navigate('/builder');
+      await register(form.name, form.email, form.password, form.organizationName);
+      navigate('/dashboard');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -32,13 +32,22 @@ export default function Register() {
   return (
     <div className="auth-screen">
       <form className="auth-card" onSubmit={onSubmit}>
-        <h1>Create your account</h1>
-        <p className="muted">Start building assessments in minutes.</p>
+        <h1>Create your organization</h1>
+        <p className="muted">Sign up as the admin of a new organization.</p>
 
         {error && <div className="alert alert-error">{error}</div>}
 
         <label>
-          Name
+          Organization name
+          <input
+            name="organizationName"
+            value={form.organizationName}
+            onChange={onChange}
+            placeholder="Acme Inc."
+          />
+        </label>
+        <label>
+          Your name
           <input name="name" value={form.name} onChange={onChange} placeholder="Jane Doe" required />
         </label>
         <label>

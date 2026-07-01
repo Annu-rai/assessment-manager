@@ -1,0 +1,51 @@
+erDiagram
+    ORGANIZATION ||--o{ USER : "has members"
+    ORGANIZATION ||--o{ ASSESSMENT : "owns"
+    ORGANIZATION ||--o{ QUESTION : "owns bank"
+    ORGANIZATION ||--o{ CATEGORY : "owns templates"
+    USER ||--o{ ASSESSMENT : "creates"
+    USER ||--o{ RESPONSE : "submits"
+    ASSESSMENT ||--o{ RESPONSE : "receives"
+    ASSESSMENT }o--o{ USER : "assignedTo"
+
+    ORGANIZATION {
+        string name
+        string slug
+        string plan
+    }
+    USER {
+        string name
+        string email
+        string passwordHash
+        string role
+        ObjectId organization
+        bool isGuest
+    }
+    ASSESSMENT {
+        string title
+        array categories
+        number passingScore
+        number timeLimitMinutes
+        array assignedTo
+        bool isPublic
+        string publicId
+    }
+    QUESTION {
+        string text
+        string type
+        mixed correctAnswer
+        number points
+        string difficulty
+        array tags
+    }
+    RESPONSE {
+        array answers
+        number score
+        number percentage
+        bool passed
+        bool graded
+    }
+    CATEGORY {
+        string name
+        array factors
+    }

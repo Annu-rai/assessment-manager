@@ -1,12 +1,21 @@
 import { useState } from 'react';
 
 // The set of supported question types and their human labels.
+// gradeable = the scoring engine can auto-grade it; media = answer is an upload.
 export const QUESTION_TYPE_META = {
-  multiple_choice: { label: 'Multiple Choice (select many)', hasOptions: true },
-  single_choice: { label: 'Single Choice (select one)', hasOptions: true },
-  rating: { label: 'Rating (scale)', hasOptions: false },
-  text: { label: 'Text / Short answer', hasOptions: false },
-  boolean: { label: 'Yes / No', hasOptions: false },
+  single_choice: { label: 'Single Choice (select one)', hasOptions: true, gradeable: true },
+  multiple_choice: { label: 'Multiple Choice (select many)', hasOptions: true, gradeable: true },
+  boolean: { label: 'Yes / No', hasOptions: false, gradeable: true },
+  numerical: { label: 'Numerical', hasOptions: false, gradeable: true },
+  fill_blank: { label: 'Fill in the Blank', hasOptions: false, gradeable: true },
+  match: { label: 'Match Pairs', hasOptions: false, gradeable: true },
+  rating: { label: 'Rating (scale)', hasOptions: false, gradeable: false },
+  text: { label: 'Text / Short answer', hasOptions: false, gradeable: false },
+  essay: { label: 'Essay / Long answer', hasOptions: false, gradeable: false },
+  file_upload: { label: 'File Upload', hasOptions: false, gradeable: false, media: true, accept: '' },
+  image_based: { label: 'Image Upload', hasOptions: false, gradeable: false, media: true, accept: 'image/*' },
+  audio: { label: 'Audio Response', hasOptions: false, gradeable: false, media: true, accept: 'audio/*' },
+  video: { label: 'Video Response', hasOptions: false, gradeable: false, media: true, accept: 'video/*' },
 };
 
 /**
