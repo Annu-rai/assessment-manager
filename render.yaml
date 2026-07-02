@@ -19,9 +19,14 @@ services:
       - key: NODE_ENV
         value: production
       # Set these in the dashboard after creating the service:
-      #   MONGO_URI     → your MongoDB Atlas connection string
-      #   CLIENT_ORIGIN → your deployed Vercel frontend URL
+      #   MONGO_URI        → your MongoDB Atlas connection string (required)
+      #   CLIENT_ORIGIN    → your deployed Vercel frontend URL (for CORS + links)
+      #   ANTHROPIC_API_KEY→ optional; enables AI features (generator/eval/insights/chat)
       - key: MONGO_URI
         sync: false
       - key: CLIENT_ORIGIN
         sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      # NOTE: file uploads use local disk, which is ephemeral on Render's free
+      # plan (wiped on redeploy/restart). Swap to S3/Cloudinary for durable files.
