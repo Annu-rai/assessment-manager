@@ -7,7 +7,9 @@ services:
     runtime: node
     rootDir: server
     plan: free
-    buildCommand: npm install
+    # --omit=dev skips test-only deps (mongodb-memory-server downloads a large
+    # binary we don't need in production) for a faster, more reliable build.
+    buildCommand: npm install --omit=dev
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
