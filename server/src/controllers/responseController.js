@@ -4,6 +4,7 @@ import Assessment from '../models/Assessment.js';
 import { orgFilter } from '../middleware/rbac.js';
 import { ROLES } from '../config/roles.js';
 import { scoreResponse } from '../utils/scoring.js';
+import { maybeIssueCertificate } from '../utils/certificateService.js';
 
 const isCandidate = (req) => req.user.role === ROLES.CANDIDATE;
 
@@ -44,6 +45,13 @@ export const submitResponse = asyncHandler(async (req, res) => {
     percentage: result.percentage,
     passed: result.passed,
   });
+
+  // Auto-issue a certificate on a graded pass (best-effort).
+  try {
+    await maybeIssueCertificate({ response, assessment, user: req.user });
+  } catch (e) {
+    console.warn('Certificate issue failed:', e.message);
+  }
 
   res.status(201).json(response);
 });

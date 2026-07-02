@@ -15,6 +15,8 @@ import Reports from './pages/Reports.jsx';
 import Team from './pages/Team.jsx';
 import CandidatePortal from './pages/CandidatePortal.jsx';
 import PublicAssessment from './pages/PublicAssessment.jsx';
+import Assistant from './pages/Assistant.jsx';
+import VerifyCertificate from './pages/VerifyCertificate.jsx';
 
 export default function App() {
   const { user, loading } = useAuth();
@@ -32,6 +34,8 @@ export default function App() {
         <Routes>
           {/* Fully public: anonymous shared assessment link (Module 14) */}
           <Route path="/t/:publicId" element={<PublicAssessment />} />
+          {/* Fully public: certificate verification (Module 17) */}
+          <Route path="/verify/:certificateId" element={<VerifyCertificate />} />
 
           {/* Public routes */}
           <Route path="/login" element={user ? <Navigate to={home} /> : <Login />} />
@@ -46,6 +50,7 @@ export default function App() {
             <Route path="/launch-pad" element={<LaunchPad />} />
             <Route path="/launch-pad/:id" element={<LaunchPad />} />
             <Route path="/reports" element={<Reports />} />
+            <Route path="/assistant" element={<Assistant />} />
           </Route>
 
           {/* Admin-only */}

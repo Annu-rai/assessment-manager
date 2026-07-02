@@ -4,6 +4,7 @@ import Assessment from '../models/Assessment.js';
 import Category from '../models/Category.js';
 import { orgFilter } from '../middleware/rbac.js';
 import { ROLES } from '../config/roles.js';
+import { sendMail, isEmailConfigured } from '../utils/email.js';
 
 const isCandidate = (req) => req.user.role === ROLES.CANDIDATE;
 
@@ -136,6 +137,55 @@ export const setPublicLink = asyncHandler(async (req, res) => {
   }
   await assessment.save();
   res.json({ isPublic: assessment.isPublic, publicId: assessment.publicId });
+});
+
+/**
+ * POST /api/assessments/:id/invite — email candidates a link to take this
+ * assessment (Module 13). Ensures a public link exists, then emails each address.
+ * Body: { emails: [string] }.
+ */
+export const inviteCandidates = asyncHandler(async (req, res) => {
+  const { emails } = req.body;
+  if (!Array.isArray(emails) || emails.length === 0) {
+    res.status(400);
+    throw new Error('Provide at least one email address');
+  }
+
+  const assessment = await Assessment.findOne({ _id: req.params.id, ...orgFilter(req) });
+  if (!assessment) {
+    res.status(404);
+    throw new Error('Assessment not found');
+  }
+
+  // Ensure a public link exists so invitees can take it without an account.
+  if (!assessment.isPublic || !assessment.publicId) {
+    assessment.isPublic = true;
+    if (!assessment.publicId) assessment.publicId = crypto.randomBytes(9).toString('base64url');
+    await assessment.save();
+  }
+
+  const base = (process.env.CLIENT_ORIGIN || '').split(',')[0].trim() ||
+    `${req.protocol}://${req.get('host')}`;
+  const link = `${base}/t/${assessment.publicId}`;
+
+  const sent = [];
+  const failed = [];
+  for (const email of emails) {
+    try {
+      await sendMail({
+        to: email,
+        subject: `You're invited to take "${assessment.title}"`,
+        text: `You have been invited to take the assessment "${assessment.title}".\n\nStart here: ${link}`,
+        html: `<p>You have been invited to take the assessment <strong>${assessment.title}</strong>.</p>
+               <p><a href="${link}">Start the assessment</a></p>`,
+      });
+      sent.push(email);
+    } catch (err) {
+      failed.push({ email, error: err.message });
+    }
+  }
+
+  res.json({ link, sent, failed, delivered: isEmailConfigured() });
 });
 
 // DELETE /api/assessments/:id (staff only)

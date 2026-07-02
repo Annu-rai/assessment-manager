@@ -12,6 +12,7 @@ const STAFF_LINKS = [
   { to: '/assessments', label: 'Assessments' },
   { to: '/launch-pad', label: 'Launch Pad' },
   { to: '/reports', label: 'Reports' },
+  { to: '/assistant', label: 'Assistant' },
 ];
 
 const CANDIDATE_LINKS = [{ to: '/candidate', label: 'My Assessments' }];

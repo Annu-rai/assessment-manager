@@ -644,6 +644,101 @@ describe('AI question generator', () => {
   });
 });
 
+describe('AI insights + chat (no key)', () => {
+  test('insights and chat return 503 without a key', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'AI3', email: 'ai3@x.com', password: 'secret123' })).body.token;
+
+    const ins = await request(app).get('/api/ai/insights').set('Authorization', `Bearer ${token}`);
+    assert.equal(ins.status, 503);
+
+    const chat = await request(app)
+      .post('/api/ai/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ messages: [{ role: 'user', content: 'hi' }] });
+    assert.equal(chat.status, 503);
+  });
+});
+
+describe('certificates', () => {
+  test('auto-issues on pass, downloads a PDF, and verifies publicly', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Cert', email: 'cert@x.com', password: 'secret123' })).body.token;
+
+    const created = await request(app)
+      .post('/api/assessments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Cert Test',
+        passingScore: 50,
+        categories: [
+          { name: 'C', factors: [{ name: 'F', questions: [{ text: 'Pick a', type: 'single_choice', options: ['a', 'b'], correctAnswer: 'a', points: 1 }] }] },
+        ],
+      });
+    const qid = created.body.categories[0].factors[0].questions[0]._id;
+
+    const submit = await request(app)
+      .post('/api/responses')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ assessmentId: created.body._id, answers: [{ questionId: qid, answer: 'a' }] });
+    assert.equal(submit.body.passed, true);
+
+    const list = await request(app).get('/api/certificates').set('Authorization', `Bearer ${token}`);
+    assert.equal(list.status, 200);
+    assert.equal(list.body.length, 1);
+    const certId = list.body[0].certificateId;
+
+    const pdf = await request(app)
+      .get(`/api/certificates/${certId}/download`)
+      .set('Authorization', `Bearer ${token}`);
+    assert.equal(pdf.status, 200);
+    assert.match(pdf.headers['content-type'], /pdf/);
+
+    // Public verification — no auth.
+    const verify = await request(app).get(`/api/public/verify/${certId}`);
+    assert.equal(verify.status, 200);
+    assert.equal(verify.body.valid, true);
+    assert.equal(verify.body.percentage, 100);
+
+    // Unknown id → not valid.
+    const bad = await request(app).get('/api/public/verify/nope');
+    assert.equal(bad.body.valid, false);
+  });
+});
+
+describe('email invites', () => {
+  test('invites publish a public link and report sent addresses', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Inv', email: 'inv@x.com', password: 'secret123' })).body.token;
+
+    const created = await request(app)
+      .post('/api/assessments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Invite Test',
+        categories: [{ name: 'C', factors: [{ name: 'F', questions: [{ text: 'Q', type: 'text' }] }] }],
+      });
+
+    const res = await request(app)
+      .post(`/api/assessments/${created.body._id}/invite`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ emails: ['alice@ext.com', 'bob@ext.com'] });
+    assert.equal(res.status, 200);
+    assert.equal(res.body.sent.length, 2);
+    assert.match(res.body.link, /\/t\//);
+    assert.equal(res.body.delivered, false); // no SMTP configured in tests
+
+    const rejected = await request(app)
+      .post(`/api/assessments/${created.body._id}/invite`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ emails: [] });
+    assert.equal(rejected.status, 400);
+  });
+});
+
 describe('dashboard', () => {
   test('returns KPI payload for staff', async () => {
     const token = (await request(app)

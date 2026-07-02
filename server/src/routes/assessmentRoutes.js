@@ -7,6 +7,7 @@ import {
   updateAssessment,
   deleteAssessment,
   setPublicLink,
+  inviteCandidates,
 } from '../controllers/assessmentController.js';
 import { protect } from '../middleware/auth.js';
 import { authorize } from '../middleware/rbac.js';
@@ -31,6 +32,7 @@ router.post(
 );
 router.put('/:id', authorize(...STAFF_ROLES), updateAssessment);
 router.post('/:id/public-link', authorize(...STAFF_ROLES), setPublicLink);
+router.post('/:id/invite', authorize(...STAFF_ROLES), inviteCandidates);
 router.delete('/:id', authorize(...STAFF_ROLES), deleteAssessment);
 
 export default router;

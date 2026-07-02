@@ -18,6 +18,10 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [insights, setInsights] = useState(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     api
@@ -25,7 +29,21 @@ export default function Dashboard() {
       .then((res) => setData(res.data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
+    api.get('/ai/status').then((r) => setAiEnabled(r.data.enabled)).catch(() => setAiEnabled(false));
   }, []);
+
+  const generateInsights = async () => {
+    setAiError('');
+    setAiBusy(true);
+    try {
+      const { data: res } = await api.get('/ai/insights');
+      setInsights(res);
+    } catch (err) {
+      setAiError(err.message);
+    } finally {
+      setAiBusy(false);
+    }
+  };
 
   if (loading) return <div className="page"><p className="muted">Loading dashboard…</p></div>;
   if (error) return <div className="page"><div className="alert alert-error">{error}</div></div>;
@@ -87,6 +105,42 @@ export default function Dashboard() {
           </ul>
         </section>
       </div>
+
+      {aiEnabled && (
+        <section className="card ai-insights-card">
+          <div className="ai-insights-head">
+            <h2>✨ AI Insights</h2>
+            <button className="btn btn-ai btn-sm" onClick={generateInsights} disabled={aiBusy}>
+              {aiBusy ? 'Analyzing…' : insights ? 'Refresh' : 'Generate insights'}
+            </button>
+          </div>
+          {aiError && <div className="alert alert-error">{aiError}</div>}
+          {!insights && !aiBusy && (
+            <p className="muted">Let Claude analyze your results and surface weak topics + recommendations.</p>
+          )}
+          {insights && (
+            <div className="ai-insights-body">
+              <p className="ai-summary">{insights.summary}</p>
+              <div className="insight-list">
+                {insights.insights.map((it, i) => (
+                  <div className={`insight-item sev-${it.severity}`} key={i}>
+                    <div className="insight-title">{it.title}</div>
+                    <div className="insight-detail muted">{it.detail}</div>
+                  </div>
+                ))}
+              </div>
+              {insights.recommendations?.length > 0 && (
+                <div className="recommendations">
+                  <h3>Recommendations</h3>
+                  <ul>
+                    {insights.recommendations.map((r, i) => <li key={i}>{r}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

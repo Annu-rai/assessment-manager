@@ -3,8 +3,10 @@ import crypto from 'node:crypto';
 import Assessment from '../models/Assessment.js';
 import Response from '../models/Response.js';
 import User from '../models/User.js';
+import Certificate from '../models/Certificate.js';
 import { stripAnswerKey } from './assessmentController.js';
 import { scoreResponse } from '../utils/scoring.js';
+import { maybeIssueCertificate } from '../utils/certificateService.js';
 import { ROLES } from '../config/roles.js';
 
 // Look up a live public assessment by its share id.
@@ -80,6 +82,15 @@ export const submitPublicResponse = asyncHandler(async (req, res) => {
     passed: result.passed,
   });
 
+  // Issue a certificate if the guest passed (best-effort, non-fatal).
+  let certificate = null;
+  try {
+    const cert = await maybeIssueCertificate({ response, assessment, user: respondent });
+    if (cert) certificate = cert.certificateId;
+  } catch (e) {
+    console.warn('Certificate issue failed:', e.message);
+  }
+
   // Return just the taker-facing result summary.
   res.status(201).json({
     graded: response.graded,
@@ -87,5 +98,19 @@ export const submitPublicResponse = asyncHandler(async (req, res) => {
     maxScore: response.maxScore,
     percentage: response.percentage,
     passed: response.passed,
+    certificate,
+  });
+});
+
+// GET /api/public/verify/:certificateId — public certificate verification.
+export const verifyCertificate = asyncHandler(async (req, res) => {
+  const cert = await Certificate.findOne({ certificateId: req.params.certificateId });
+  if (!cert) return res.json({ valid: false });
+  res.json({
+    valid: true,
+    candidateName: cert.candidateName,
+    assessmentTitle: cert.assessmentTitle,
+    percentage: cert.percentage,
+    issuedAt: cert.createdAt,
   });
 });

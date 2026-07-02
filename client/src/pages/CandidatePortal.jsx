@@ -5,18 +5,37 @@ import api from '../api/client.js';
 export default function CandidatePortal() {
   const [assessments, setAssessments] = useState([]);
   const [responses, setResponses] = useState([]);
+  const [certs, setCerts] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([api.get('/assessments'), api.get('/responses')])
-      .then(([a, r]) => {
+    Promise.all([api.get('/assessments'), api.get('/responses'), api.get('/certificates')])
+      .then(([a, r, c]) => {
         setAssessments(a.data);
         setResponses(r.data);
+        setCerts(c.data);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Certificate per assessment id (candidate may have earned one on passing).
+  const certByAssessment = new Map();
+  for (const c of certs) certByAssessment.set(String(c.assessment), c);
+
+  // Download a protected certificate PDF (needs the JWT, so fetch as a blob).
+  const downloadCert = async (certificateId) => {
+    setError('');
+    try {
+      const res = await api.get(`/certificates/${certificateId}/download`, { responseType: 'blob' });
+      const url = URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   // Latest response per assessment id, so we can show "completed" state + score.
   const resultByAssessment = new Map();
@@ -92,6 +111,14 @@ export default function CandidatePortal() {
                       <p className="feedback-line" key={i}>💬 {x.aiFeedback}</p>
                     ))}
                   </div>
+                )}
+                {certByAssessment.has(String(a._id)) && (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => downloadCert(certByAssessment.get(String(a._id)).certificateId)}
+                  >
+                    🏅 Download Certificate
+                  </button>
                 )}
               </div>
             );

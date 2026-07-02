@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import asyncHandler from 'express-async-handler';
 import { body } from 'express-validator';
-import { getPublicAssessment, submitPublicResponse } from '../controllers/publicController.js';
+import {
+  getPublicAssessment,
+  submitPublicResponse,
+  verifyCertificate,
+} from '../controllers/publicController.js';
 import { validate } from '../middleware/validate.js';
 import { upload } from '../middleware/upload.js';
 
@@ -9,6 +13,7 @@ import { upload } from '../middleware/upload.js';
 const router = Router();
 
 router.get('/assessments/:publicId', getPublicAssessment);
+router.get('/verify/:certificateId', verifyCertificate);
 
 router.post(
   '/assessments/:publicId/submit',

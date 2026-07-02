@@ -8,6 +8,10 @@ export default function Assessments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
+  const [inviteFor, setInviteFor] = useState(null); // assessment being invited to
+  const [inviteEmails, setInviteEmails] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
+  const [inviteResult, setInviteResult] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -31,6 +35,38 @@ export default function Assessments() {
   };
 
   const publicUrl = (publicId) => `${window.location.origin}/t/${publicId}`;
+
+  const openInvite = (a) => {
+    setInviteFor(a);
+    setInviteEmails('');
+    setInviteResult(null);
+    setError('');
+  };
+
+  const sendInvites = async () => {
+    const emails = inviteEmails
+      .split(/[\s,;]+/)
+      .map((e) => e.trim())
+      .filter(Boolean);
+    if (emails.length === 0) {
+      setError('Enter at least one email.');
+      return;
+    }
+    setInviteBusy(true);
+    setError('');
+    try {
+      const { data } = await api.post(`/assessments/${inviteFor._id}/invite`, { emails });
+      setInviteResult(data);
+      // Reflect that the assessment is now public.
+      setAssessments((list) =>
+        list.map((x) => (x._id === inviteFor._id ? { ...x, isPublic: true } : x))
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setInviteBusy(false);
+    }
+  };
 
   // Toggle the public share link for an assessment (Module 14).
   const toggleShare = async (a) => {
@@ -107,6 +143,9 @@ export default function Assessments() {
               <button className="btn btn-secondary btn-sm" onClick={() => toggleShare(a)}>
                 {a.isPublic ? '🔒 Unshare' : '🔗 Share link'}
               </button>
+              <button className="btn btn-secondary btn-sm" onClick={() => openInvite(a)}>
+                ✉️ Invite
+              </button>
               <button className="btn btn-ghost btn-sm" onClick={() => remove(a._id)}>
                 Delete
               </button>
@@ -114,6 +153,47 @@ export default function Assessments() {
           </div>
         ))}
       </div>
+
+      {inviteFor && (
+        <div className="modal-overlay" onClick={() => setInviteFor(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>✉️ Invite candidates</h3>
+              <button className="modal-close" onClick={() => setInviteFor(null)} aria-label="Close">×</button>
+            </div>
+            <p className="muted">
+              Email a link to take <strong>{inviteFor.title}</strong>. This publishes a public link.
+            </p>
+            <label>
+              Emails (comma, space, or newline separated)
+              <textarea
+                rows={4}
+                value={inviteEmails}
+                onChange={(e) => setInviteEmails(e.target.value)}
+                placeholder="alice@example.com, bob@example.com"
+              />
+            </label>
+            {inviteResult && (
+              <div className="alert alert-success">
+                Invited {inviteResult.sent.length} candidate(s).
+                {!inviteResult.delivered && ' (Dev mode: emails logged, not delivered — SMTP not configured.)'}
+                <div className="share-box">
+                  <input readOnly value={inviteResult.link} onFocus={(e) => e.target.select()} />
+                </div>
+              </div>
+            )}
+            <div className="modal-footer">
+              <span className="muted small">{inviteBusy ? 'Sending…' : ''}</span>
+              <div>
+                <button className="btn btn-ghost" onClick={() => setInviteFor(null)}>Close</button>
+                <button className="btn btn-primary" onClick={sendInvites} disabled={inviteBusy}>
+                  {inviteBusy ? 'Sending…' : 'Send invites'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

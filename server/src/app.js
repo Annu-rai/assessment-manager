@@ -14,6 +14,7 @@ import uploadRoutes from './routes/uploadRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
 import publicRoutes from './routes/publicRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
+import certificateRoutes from './routes/certificateRoutes.js';
 
 /**
  * Builds the Express app WITHOUT connecting to the database or starting a
@@ -49,6 +50,7 @@ export function createApp() {
   app.use('/api/assessments', assessmentRoutes);
   app.use('/api/responses', responseRoutes);
   app.use('/api/uploads', uploadRoutes);
+  app.use('/api/certificates', certificateRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
