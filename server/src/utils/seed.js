@@ -24,6 +24,9 @@ const DEMO_USERS = [
 
 const SUPER_ADMIN = { name: 'Platform Owner', email: 'super@demo.com', role: ROLES.SUPER_ADMIN };
 
+// Exported so the server can check "do the demo accounts exist yet?" on boot.
+export const DEMO_ADMIN_EMAIL = DEMO_USERS[0].email; // admin@demo.com
+
 // A scored assessment: choice/boolean questions carry a correctAnswer + points.
 const sampleCategories = [
   {
