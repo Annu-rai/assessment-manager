@@ -17,7 +17,7 @@ export default function Login() {
     setBusy(true);
     try {
       await login(form.email, form.password);
-      navigate('/builder');
+      navigate('/'); // App's default route sends each role to its home page
     } catch (err) {
       setError(err.message);
     } finally {

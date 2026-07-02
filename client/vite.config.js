@@ -12,6 +12,11 @@ export default defineConfig({
         target: process.env.VITE_API_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
+      // Uploaded question media + candidate answer files are served by the API.
+      '/uploads': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 });

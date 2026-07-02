@@ -17,7 +17,19 @@ const assessmentSchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, default: '', trim: true },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    organization: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', index: true },
     categories: { type: [embeddedCategorySchema], default: [] },
+    // Scoring config. passingScore is a percentage (0-100). An assessment is
+    // "graded" if any of its questions carry a correctAnswer (see scoring util).
+    passingScore: { type: Number, default: 60, min: 0, max: 100 },
+    // Timer (Module 11): overall time limit in minutes. 0 = untimed.
+    timeLimitMinutes: { type: Number, default: 0, min: 0 },
+    // Candidate assignment (Module 4/13): users invited to take this assessment.
+    assignedTo: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], default: [] },
+    status: { type: String, enum: ['draft', 'published', 'archived'], default: 'published', index: true },
+    // Public link (Module 14): when isPublic, anyone with publicId can take it anonymously.
+    isPublic: { type: Boolean, default: false },
+    publicId: { type: String, index: true, sparse: true, unique: true },
   },
   { timestamps: true }
 );

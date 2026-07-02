@@ -1,0 +1,22 @@
+flowchart TB
+    subgraph Client["🖥️ CLIENT — React + Vite (5173)"]
+        UI["Pages & Components"]
+        Ctx["AuthContext / ThemeContext"]
+        Axios["axios client (JWT auto-attach)"]
+        UI --> Ctx --> Axios
+    end
+
+    subgraph Server["⚙️ SERVER — Express (5000)"]
+        MW["Middleware: protect · authorize · upload · validate"]
+        Ctrl["Controllers (business logic)"]
+        Utils["Utils: scoring · token · slug"]
+        MW --> Ctrl --> Utils
+    end
+
+    DB[("🗄️ MongoDB — Orgs · Users · Assessments · Responses · Questions")]
+    Files[("📁 /uploads (disk)")]
+
+    Axios -->|"REST /api/*"| MW
+    Ctrl -->|Mongoose| DB
+    Ctrl -->|Multer| Files
+    Guest["👤 Anonymous user"] -->|"/t/:publicId (no login)"| Axios

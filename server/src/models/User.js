@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import { ROLE_VALUES, ROLES } from '../config/roles.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -12,6 +13,18 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     passwordHash: { type: String, required: true },
+    // Multi-tenant (Module 1): every user belongs to one organization.
+    // Optional only for the platform-level super_admin, who spans all orgs.
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Organization',
+      index: true,
+    },
+    // RBAC (Module 2).
+    role: { type: String, enum: ROLE_VALUES, default: ROLES.CANDIDATE, index: true },
+    isActive: { type: Boolean, default: true },
+    // Guests are created when someone submits a public assessment link (Module 14).
+    isGuest: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
