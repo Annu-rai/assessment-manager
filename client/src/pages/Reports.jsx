@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import api from '../api/client.js';
+import ExportButtons from '../components/ExportButtons.jsx';
 
 const fileUrl = (path) => `${import.meta.env.VITE_API_URL || ''}${path}`;
 
@@ -77,6 +78,7 @@ export default function Reports() {
           <h1>Reports</h1>
           <p className="muted">Submitted responses, grouped by assessment.</p>
         </div>
+        <ExportButtons path="/export/responses" name="responses" />
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}

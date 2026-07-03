@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/client.js';
 import { ROLES, ROLE_LABELS } from '../constants/roles.js';
+import ExportButtons from '../components/ExportButtons.jsx';
 
 // Roles an org admin can assign when adding a team member.
 const ASSIGNABLE_ROLES = [
@@ -78,6 +79,7 @@ export default function Team() {
           <h1>Team</h1>
           <p className="muted">Manage members and their roles.</p>
         </div>
+        <ExportButtons path="/export/candidates" name="members" formats={['csv', 'xlsx']} />
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}

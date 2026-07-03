@@ -739,6 +739,61 @@ describe('email invites', () => {
   });
 });
 
+describe('exports', () => {
+  test('exports responses as CSV and XLSX, candidates as CSV', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Exp', email: 'exp@x.com', password: 'secret123' })).body.token;
+
+    // Create + submit so there's a row to export.
+    const created = await request(app)
+      .post('/api/assessments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        title: 'Export Test',
+        passingScore: 50,
+        categories: [
+          { name: 'C', factors: [{ name: 'F', questions: [{ text: 'Pick', type: 'single_choice', options: ['a', 'b'], correctAnswer: 'a', points: 1 }] }] },
+        ],
+      });
+    const qid = created.body.categories[0].factors[0].questions[0]._id;
+    await request(app)
+      .post('/api/responses')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ assessmentId: created.body._id, answers: [{ questionId: qid, answer: 'a' }] });
+
+    const csv = await request(app).get('/api/export/responses?format=csv').set('Authorization', `Bearer ${token}`);
+    assert.equal(csv.status, 200);
+    assert.match(csv.headers['content-type'], /csv/);
+    assert.match(csv.text, /Candidate,Email,Assessment/);
+    assert.match(csv.text, /Export Test/);
+
+    const xlsx = await request(app).get('/api/export/responses?format=xlsx').set('Authorization', `Bearer ${token}`);
+    assert.equal(xlsx.status, 200);
+    assert.match(xlsx.headers['content-type'], /spreadsheetml/);
+
+    const cands = await request(app).get('/api/export/candidates?format=csv').set('Authorization', `Bearer ${token}`);
+    assert.equal(cands.status, 200);
+    assert.match(cands.text, /Name,Email,Role,Status/);
+  });
+
+  test('candidates cannot use exports (403)', async () => {
+    const adminToken = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'ExpAdmin', email: 'expadmin@x.com', password: 'secret123' })).body.token;
+    await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'C', email: 'expc@x.com', password: 'secret123', role: 'candidate' });
+    const candToken = (await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'expc@x.com', password: 'secret123' })).body.token;
+
+    const res = await request(app).get('/api/export/responses?format=csv').set('Authorization', `Bearer ${candToken}`);
+    assert.equal(res.status, 403);
+  });
+});
+
 describe('dashboard', () => {
   test('returns KPI payload for staff', async () => {
     const token = (await request(app)

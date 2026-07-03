@@ -1336,3 +1336,11 @@ label input {
 .chat-input input {
   flex: 1;
 }
+
+/* Export buttons (Module 26) */
+.export-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
