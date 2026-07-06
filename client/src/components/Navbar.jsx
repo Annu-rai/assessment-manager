@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
@@ -22,9 +23,14 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
+  const [q, setQ] = useState('');
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+  const submitSearch = (e) => {
+    e.preventDefault();
+    if (q.trim()) navigate(`/search?q=${encodeURIComponent(q.trim())}`);
   };
 
   let links = isCandidate(user) ? CANDIDATE_LINKS : [...STAFF_LINKS];
@@ -58,6 +64,16 @@ export default function Navbar() {
         ))}
       </nav>
       <div className="navbar-user">
+        {!isCandidate(user) && (
+          <form className="navbar-search" onSubmit={submitSearch}>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="🔍 Search…"
+              aria-label="Search"
+            />
+          </form>
+        )}
         <button
           className="theme-toggle"
           onClick={toggleTheme}

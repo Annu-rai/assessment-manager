@@ -867,6 +867,41 @@ describe('AI recommendation (no key)', () => {
   });
 });
 
+describe('search + API docs', () => {
+  test('global search finds assessments; candidates are blocked', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Srch', email: 'srch@x.com', password: 'secret123' })).body.token;
+
+    await request(app)
+      .post('/api/assessments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Findable Quiz', categories: [{ name: 'C', factors: [{ name: 'F', questions: [{ text: 'Q', type: 'text' }] }] }] });
+
+    const res = await request(app).get('/api/search?q=Findable').set('Authorization', `Bearer ${token}`);
+    assert.equal(res.status, 200);
+    assert.ok(res.body.assessments.some((a) => a.title === 'Findable Quiz'));
+
+    // Candidate blocked.
+    await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'C', email: 'srchc@x.com', password: 'secret123', role: 'candidate' });
+    const candToken = (await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'srchc@x.com', password: 'secret123' })).body.token;
+    const blocked = await request(app).get('/api/search?q=x').set('Authorization', `Bearer ${candToken}`);
+    assert.equal(blocked.status, 403);
+  });
+
+  test('serves the OpenAPI spec', async () => {
+    const res = await request(app).get('/api/openapi.json');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.openapi, '3.0.3');
+    assert.ok(res.body.paths['/api/auth/login']);
+  });
+});
+
 describe('dashboard', () => {
   test('returns KPI payload for staff', async () => {
     const token = (await request(app)

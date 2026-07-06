@@ -18,6 +18,7 @@ import AuditLogs from './pages/AuditLogs.jsx';
 import CandidatePortal from './pages/CandidatePortal.jsx';
 import PublicAssessment from './pages/PublicAssessment.jsx';
 import Assistant from './pages/Assistant.jsx';
+import Search from './pages/Search.jsx';
 import VerifyCertificate from './pages/VerifyCertificate.jsx';
 
 export default function App() {
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/launch-pad/:id" element={<LaunchPad />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/assistant" element={<Assistant />} />
+            <Route path="/search" element={<Search />} />
           </Route>
 
           {/* Admin-only */}

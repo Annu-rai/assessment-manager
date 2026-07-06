@@ -24,6 +24,7 @@ export default function Team() {
   const [busy, setBusy] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [recFor, setRecFor] = useState(null); // candidate for the AI-fit modal
+  const [memberFilter, setMemberFilter] = useState({ role: '', status: '' });
 
   const load = () => {
     setLoading(true);
@@ -78,6 +79,13 @@ export default function Team() {
     }
   };
 
+  const filteredUsers = users.filter((u) => {
+    if (memberFilter.role && u.role !== memberFilter.role) return false;
+    if (memberFilter.status === 'active' && u.isActive === false) return false;
+    if (memberFilter.status === 'inactive' && u.isActive !== false) return false;
+    return true;
+  });
+
   return (
     <div className="page">
       <div className="page-header">
@@ -123,7 +131,26 @@ export default function Team() {
       </section>
 
       <section className="card">
-        <h2>Members ({users.length})</h2>
+        <div className="filter-bar" style={{ marginBottom: '0.5rem' }}>
+          <select
+            value={memberFilter.role}
+            onChange={(e) => setMemberFilter({ ...memberFilter, role: e.target.value })}
+          >
+            <option value="">All roles</option>
+            {ASSIGNABLE_ROLES.map((r) => (
+              <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+            ))}
+          </select>
+          <select
+            value={memberFilter.status}
+            onChange={(e) => setMemberFilter({ ...memberFilter, status: e.target.value })}
+          >
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <h2>Members ({filteredUsers.length})</h2>
         {loading ? (
           <p className="muted">Loading…</p>
         ) : (
@@ -138,7 +165,7 @@ export default function Team() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr key={u._id} className={u.isActive ? '' : 'row-inactive'}>
                   <td>{u.name}</td>
                   <td>{u.email}</td>

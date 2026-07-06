@@ -32,6 +32,7 @@ export default function Reports() {
   const [openId, setOpenId] = useState(null);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [gradingId, setGradingId] = useState(null);
+  const [filters, setFilters] = useState({ assessment: '', result: 'all', minPct: '', maxPct: '' });
 
   useEffect(() => {
     api
@@ -57,6 +58,17 @@ export default function Reports() {
       setGradingId(null);
     }
   };
+
+  // Advanced filters (Module 28) — applied client-side over the fetched list.
+  const assessmentTitles = [...new Set(responses.map((r) => r.assessment?.title).filter(Boolean))];
+  const filtered = responses.filter((r) => {
+    if (filters.assessment && r.assessment?.title !== filters.assessment) return false;
+    if (filters.result === 'pass' && !(r.graded && r.passed)) return false;
+    if (filters.result === 'fail' && !(r.graded && !r.passed)) return false;
+    if (filters.minPct !== '' && (!r.graded || r.percentage < Number(filters.minPct))) return false;
+    if (filters.maxPct !== '' && (!r.graded || r.percentage > Number(filters.maxPct))) return false;
+    return true;
+  });
 
   // Group a response's answers by category -> factor for structured display.
   const grouped = (answers) => {
@@ -90,7 +102,43 @@ export default function Reports() {
         </div>
       )}
 
-      {responses.map((r) => {
+      {responses.length > 0 && (
+        <div className="filter-bar card">
+          <select
+            value={filters.assessment}
+            onChange={(e) => setFilters({ ...filters, assessment: e.target.value })}
+          >
+            <option value="">All assessments</option>
+            {assessmentTitles.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <select value={filters.result} onChange={(e) => setFilters({ ...filters, result: e.target.value })}>
+            <option value="all">All results</option>
+            <option value="pass">Passed</option>
+            <option value="fail">Failed</option>
+          </select>
+          <input
+            type="number"
+            min="0"
+            max="100"
+            placeholder="Min %"
+            value={filters.minPct}
+            onChange={(e) => setFilters({ ...filters, minPct: e.target.value })}
+          />
+          <input
+            type="number"
+            min="0"
+            max="100"
+            placeholder="Max %"
+            value={filters.maxPct}
+            onChange={(e) => setFilters({ ...filters, maxPct: e.target.value })}
+          />
+          <span className="muted small">{filtered.length} of {responses.length}</span>
+        </div>
+      )}
+
+      {filtered.map((r) => {
         const open = openId === r._id;
         return (
           <div className="card report-card" key={r._id}>

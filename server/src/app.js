@@ -1,8 +1,10 @@
 import express from 'express';
 import cors from 'cors';
+import swaggerUi from 'swagger-ui-express';
 
 import { notFound, errorHandler } from './middleware/error.js';
 import { UPLOAD_DIR } from './middleware/upload.js';
+import { openApiSpec } from './config/openapi.js';
 import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
@@ -17,6 +19,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import certificateRoutes from './routes/certificateRoutes.js';
 import exportRoutes from './routes/exportRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
 
 /**
  * Builds the Express app WITHOUT connecting to the database or starting a
@@ -41,6 +44,10 @@ export function createApp() {
     res.json({ status: 'ok', time: new Date().toISOString() })
   );
 
+  // Interactive API docs (Module 31) — public.
+  app.get('/api/openapi.json', (req, res) => res.json(openApiSpec));
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec, { customSiteTitle: 'Assessment API Docs' }));
+
   app.use('/api/public', publicRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/organizations', organizationRoutes);
@@ -55,6 +62,7 @@ export function createApp() {
   app.use('/api/certificates', certificateRoutes);
   app.use('/api/export', exportRoutes);
   app.use('/api/audit', auditRoutes);
+  app.use('/api/search', searchRoutes);
 
   app.use(notFound);
   app.use(errorHandler);
