@@ -794,6 +794,79 @@ describe('exports', () => {
   });
 });
 
+describe('white-label branding', () => {
+  test('org admin updates name, logo and primary color', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Brand', email: 'brand@x.com', password: 'secret123' })).body.token;
+
+    const upd = await request(app)
+      .put('/api/organizations/me')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Acme X', primaryColor: '#ff0000', logoUrl: 'http://x/logo.png' });
+    assert.equal(upd.status, 200);
+    assert.equal(upd.body.primaryColor, '#ff0000');
+    assert.equal(upd.body.name, 'Acme X');
+
+    const me = await request(app).get('/api/organizations/me').set('Authorization', `Bearer ${token}`);
+    assert.equal(me.body.logoUrl, 'http://x/logo.png');
+  });
+});
+
+describe('audit logs', () => {
+  test('records admin actions and lists them', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Aud', email: 'aud@x.com', password: 'secret123' })).body.token;
+
+    await request(app)
+      .post('/api/assessments')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Audited', categories: [{ name: 'C', factors: [{ name: 'F', questions: [{ text: 'Q', type: 'text' }] }] }] });
+
+    // Audit writes are fire-and-forget; give them a moment to land.
+    await new Promise((r) => setTimeout(r, 300));
+
+    const res = await request(app).get('/api/audit').set('Authorization', `Bearer ${token}`);
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.body));
+    assert.ok(res.body.some((l) => l.action === 'assessment.create'));
+  });
+
+  test('candidates cannot view audit logs (403)', async () => {
+    const adminToken = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'AudAdmin', email: 'audadmin@x.com', password: 'secret123' })).body.token;
+    await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ name: 'C', email: 'audc@x.com', password: 'secret123', role: 'candidate' });
+    const candToken = (await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'audc@x.com', password: 'secret123' })).body.token;
+
+    const res = await request(app).get('/api/audit').set('Authorization', `Bearer ${candToken}`);
+    assert.equal(res.status, 403);
+  });
+});
+
+describe('AI recommendation (no key)', () => {
+  test('returns 503 without a key', async () => {
+    const token = (await request(app)
+      .post('/api/auth/register')
+      .send({ name: 'Rec', email: 'rec@x.com', password: 'secret123' })).body.token;
+    const cand = await request(app)
+      .post('/api/users')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Cand', email: 'recc@x.com', password: 'secret123', role: 'candidate' });
+
+    const res = await request(app)
+      .get(`/api/ai/recommendation/${cand.body._id}`)
+      .set('Authorization', `Bearer ${token}`);
+    assert.equal(res.status, 503);
+  });
+});
+
 describe('dashboard', () => {
   test('returns KPI payload for staff', async () => {
     const token = (await request(app)

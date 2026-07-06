@@ -4,6 +4,7 @@ import { generateQuestions, AI_QUESTION_TYPES } from '../utils/aiQuestionGenerat
 import { evaluateEssays } from '../utils/aiEvaluator.js';
 import { generateInsights } from '../utils/aiInsights.js';
 import { runChat } from '../utils/aiChat.js';
+import { generateRecommendation } from '../utils/aiRecommendation.js';
 import { maybeIssueCertificate } from '../utils/certificateService.js';
 import Response from '../models/Response.js';
 import Assessment from '../models/Assessment.js';
@@ -247,6 +248,71 @@ export const chat = asyncHandler(async (req, res) => {
   try {
     const reply = await runChat(messages, orgFilter(req));
     res.json({ reply });
+  } catch (err) {
+    throw aiError(res, err);
+  }
+});
+
+/**
+ * GET /api/ai/recommendation/:candidateId — role-fit recommendation for a
+ * candidate based on their assessment performance (Module 38, staff only).
+ */
+export const recommendation = asyncHandler(async (req, res) => {
+  if (!isAIEnabled()) {
+    res.status(503);
+    throw new Error('AI is not configured. Set ANTHROPIC_API_KEY on the server to enable it.');
+  }
+
+  const candidate = await User.findOne({ _id: req.params.candidateId, ...orgFilter(req) });
+  if (!candidate) {
+    res.status(404);
+    throw new Error('Candidate not found');
+  }
+
+  const responses = await Response.find({ ...orgFilter(req), respondent: candidate._id })
+    .populate('assessment', 'title')
+    .lean();
+
+  if (responses.length === 0) {
+    res.status(400);
+    throw new Error('This candidate has no assessment submissions to analyze');
+  }
+
+  // Per-category performance + per-assessment scores.
+  const catTally = new Map();
+  const assessments = [];
+  let gradedTotal = 0;
+  let gradedCount = 0;
+  for (const r of responses) {
+    for (const a of r.answers || []) {
+      if ((a.pointsPossible || 0) > 0) {
+        const c = catTally.get(a.categoryName) || { awarded: 0, possible: 0 };
+        c.awarded += a.pointsAwarded || 0;
+        c.possible += a.pointsPossible || 0;
+        catTally.set(a.categoryName, c);
+      }
+    }
+    if (r.graded) {
+      gradedTotal += r.percentage;
+      gradedCount += 1;
+      assessments.push({ title: r.assessment?.title || 'Untitled', percentage: r.percentage, passed: r.passed });
+    }
+  }
+
+  const stats = {
+    candidateName: candidate.name,
+    overallAverage: gradedCount ? Math.round(gradedTotal / gradedCount) : null,
+    assessmentsTaken: responses.length,
+    categories: [...catTally.entries()].map(([name, v]) => ({
+      name,
+      avgPercent: v.possible ? Math.round((v.awarded / v.possible) * 100) : 0,
+    })),
+    assessments,
+  };
+
+  try {
+    const result = await generateRecommendation(stats);
+    res.json({ candidate: candidate.name, stats, ...result });
   } catch (err) {
     throw aiError(res, err);
   }

@@ -13,6 +13,8 @@ import Assessments from './pages/Assessments.jsx';
 import LaunchPad from './pages/LaunchPad.jsx';
 import Reports from './pages/Reports.jsx';
 import Team from './pages/Team.jsx';
+import Branding from './pages/Branding.jsx';
+import AuditLogs from './pages/AuditLogs.jsx';
 import CandidatePortal from './pages/CandidatePortal.jsx';
 import PublicAssessment from './pages/PublicAssessment.jsx';
 import Assistant from './pages/Assistant.jsx';
@@ -56,6 +58,8 @@ export default function App() {
           {/* Admin-only */}
           <Route element={<RoleRoute allow={ADMIN_ROLES} />}>
             <Route path="/team" element={<Team />} />
+            <Route path="/branding" element={<Branding />} />
+            <Route path="/audit" element={<AuditLogs />} />
           </Route>
 
           {/* Candidate portal */}

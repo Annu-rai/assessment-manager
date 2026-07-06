@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import { orgFilter } from '../middleware/rbac.js';
 import { ROLES, ROLE_VALUES } from '../config/roles.js';
+import { auditReq } from '../utils/audit.js';
 
 // GET /api/users — list users in the caller's org (admins). super_admin sees all.
 export const listUsers = asyncHandler(async (req, res) => {
@@ -43,6 +44,7 @@ export const createUser = asyncHandler(async (req, res) => {
   await user.setPassword(password);
   await user.save();
 
+  auditReq(req, 'user.create', user.email, { role });
   res.status(201).json(user);
 });
 
@@ -65,6 +67,7 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (req.body.isActive !== undefined) user.isActive = req.body.isActive;
   await user.save();
 
+  auditReq(req, 'user.update', user.email, { role: user.role, isActive: user.isActive });
   res.json(user);
 });
 
@@ -83,5 +86,6 @@ export const deactivateUser = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('User not found');
   }
+  auditReq(req, 'user.deactivate', user.email);
   res.json({ message: 'User deactivated', user });
 });

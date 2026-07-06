@@ -1,6 +1,13 @@
 import { Router } from 'express';
 import { body } from 'express-validator';
-import { aiStatus, generate, evaluateResponse, insights, chat } from '../controllers/aiController.js';
+import {
+  aiStatus,
+  generate,
+  evaluateResponse,
+  insights,
+  chat,
+  recommendation,
+} from '../controllers/aiController.js';
 import { protect } from '../middleware/auth.js';
 import { authorize } from '../middleware/rbac.js';
 import { validate } from '../middleware/validate.js';
@@ -21,5 +28,6 @@ router.post(
 router.post('/evaluate-response/:id', evaluateResponse);
 router.get('/insights', insights);
 router.post('/chat', chat);
+router.get('/recommendation/:candidateId', recommendation);
 
 export default router;

@@ -28,12 +28,23 @@ export default function Navbar() {
   };
 
   let links = isCandidate(user) ? CANDIDATE_LINKS : [...STAFF_LINKS];
-  if (isAdmin(user)) links = [...links, { to: '/team', label: 'Team' }];
+  if (isAdmin(user))
+    links = [
+      ...links,
+      { to: '/team', label: 'Team' },
+      { to: '/branding', label: 'Branding' },
+      { to: '/audit', label: 'Audit' },
+    ];
 
   return (
     <header className="navbar">
       <div className="navbar-brand">
-        📋 {organization?.name || 'Assessment Manager'}
+        {organization?.logoUrl ? (
+          <img src={organization.logoUrl} alt="" className="navbar-logo" />
+        ) : (
+          '📋'
+        )}{' '}
+        {organization?.name || 'Assessment Manager'}
       </div>
       <nav className="navbar-links">
         {links.map((l) => (

@@ -52,8 +52,23 @@ export function AuthProvider({ children }) {
     setOrganization(null);
   }, []);
 
+  // White-label (Module 23): apply the org's primary color to the theme.
+  useEffect(() => {
+    const root = document.documentElement;
+    const color = organization?.primaryColor;
+    if (color) {
+      root.style.setProperty('--primary', color);
+      root.style.setProperty('--primary-dark', color);
+    } else {
+      root.style.removeProperty('--primary');
+      root.style.removeProperty('--primary-dark');
+    }
+  }, [organization?.primaryColor]);
+
   return (
-    <AuthContext.Provider value={{ user, organization, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, organization, setOrganization, loading, login, register, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

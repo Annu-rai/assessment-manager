@@ -5,6 +5,7 @@ import Category from '../models/Category.js';
 import { orgFilter } from '../middleware/rbac.js';
 import { ROLES } from '../config/roles.js';
 import { sendMail, isEmailConfigured } from '../utils/email.js';
+import { auditReq } from '../utils/audit.js';
 
 const isCandidate = (req) => req.user.role === ROLES.CANDIDATE;
 
@@ -100,6 +101,7 @@ export const createAssessment = asyncHandler(async (req, res) => {
     console.warn('Could not mirror categories to template library:', err.message);
   }
 
+  auditReq(req, 'assessment.create', assessment.title);
   res.status(201).json(assessment);
 });
 
@@ -185,6 +187,7 @@ export const inviteCandidates = asyncHandler(async (req, res) => {
     }
   }
 
+  auditReq(req, 'assessment.invite', assessment.title, { count: sent.length });
   res.json({ link, sent, failed, delivered: isEmailConfigured() });
 });
 
@@ -195,5 +198,6 @@ export const deleteAssessment = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error('Assessment not found');
   }
+  auditReq(req, 'assessment.delete', assessment.title);
   res.json({ message: 'Assessment deleted' });
 });

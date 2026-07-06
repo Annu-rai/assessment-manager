@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import api from '../api/client.js';
 import { ROLES, ROLE_LABELS } from '../constants/roles.js';
 import ExportButtons from '../components/ExportButtons.jsx';
+import AIRecommendationModal from '../components/AIRecommendationModal.jsx';
 
 // Roles an org admin can assign when adding a team member.
 const ASSIGNABLE_ROLES = [
@@ -21,6 +22,8 @@ export default function Team() {
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [recFor, setRecFor] = useState(null); // candidate for the AI-fit modal
 
   const load = () => {
     setLoading(true);
@@ -32,6 +35,9 @@ export default function Team() {
   };
 
   useEffect(load, []);
+  useEffect(() => {
+    api.get('/ai/status').then((r) => setAiEnabled(r.data.enabled)).catch(() => setAiEnabled(false));
+  }, []);
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -144,7 +150,16 @@ export default function Team() {
                     </select>
                   </td>
                   <td>{u.isActive ? 'Active' : 'Inactive'}</td>
-                  <td>
+                  <td className="member-actions">
+                    {aiEnabled && u.role === ROLES.CANDIDATE && (
+                      <button
+                        className="btn btn-ai btn-sm"
+                        onClick={() => setRecFor(u)}
+                        title="AI role-fit recommendation"
+                      >
+                        ✨ Fit
+                      </button>
+                    )}
                     {u.isActive && (
                       <button className="btn btn-ghost btn-sm" onClick={() => deactivate(u._id)}>
                         Deactivate
@@ -157,6 +172,14 @@ export default function Team() {
           </table>
         )}
       </section>
+
+      {recFor && (
+        <AIRecommendationModal
+          candidateId={recFor._id}
+          candidateName={recFor.name}
+          onClose={() => setRecFor(null)}
+        />
+      )}
     </div>
   );
 }

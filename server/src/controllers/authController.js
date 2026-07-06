@@ -3,6 +3,7 @@ import User from '../models/User.js';
 import Organization from '../models/Organization.js';
 import { signToken } from '../utils/token.js';
 import { uniqueSlug } from '../utils/slug.js';
+import { recordAudit } from '../utils/audit.js';
 import { ROLES } from '../config/roles.js';
 
 /**
@@ -34,6 +35,15 @@ export const register = asyncHandler(async (req, res) => {
   await user.setPassword(password);
   await user.save();
 
+  recordAudit({
+    organization: org._id,
+    actorId: user._id,
+    actorName: user.name,
+    actorRole: user.role,
+    action: 'org.register',
+    target: org.name,
+  });
+
   const token = signToken(user.id);
   res.status(201).json({ user, organization: org, token });
 });
@@ -51,6 +61,14 @@ export const login = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error('This account has been deactivated');
   }
+
+  recordAudit({
+    organization: user.organization,
+    actorId: user._id,
+    actorName: user.name,
+    actorRole: user.role,
+    action: 'auth.login',
+  });
 
   const token = signToken(user.id);
   res.json({ user, token });

@@ -1344,3 +1344,108 @@ label input {
   gap: 0.35rem;
   flex-wrap: wrap;
 }
+
+/* White-label branding (Module 23) */
+.navbar-logo {
+  height: 24px;
+  width: auto;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+.branding-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 760px) {
+  .branding-grid { grid-template-columns: 1fr; }
+}
+.brand-preview {
+  --preview: #4f46e5;
+}
+.brand-navbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+.brand-logo {
+  height: 26px;
+  border-radius: 4px;
+}
+.brand-emoji { font-size: 1.2rem; }
+.brand-btn {
+  background: var(--preview);
+  color: #fff;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: default;
+}
+input[type='color'] {
+  width: 44px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+}
+
+/* AI Recommendation (Module 38) */
+.member-actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.rec-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.rec-role {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.7rem;
+}
+.rec-role-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.rec-role-name {
+  font-weight: 700;
+}
+.conf {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+}
+.conf-high { background: color-mix(in srgb, var(--success) 16%, transparent); color: var(--success); }
+.conf-medium { background: color-mix(in srgb, #d97706 18%, transparent); color: #d97706; }
+.conf-low { background: var(--surface-2); color: var(--muted); }
+.rec-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 640px) {
+  .rec-cols { grid-template-columns: 1fr; }
+}
+.rec-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0 0;
+}
+.rec-list li {
+  font-size: 0.88rem;
+  margin: 0.25rem 0;
+}
